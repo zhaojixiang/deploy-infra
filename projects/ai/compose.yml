@@ -1,0 +1,130 @@
+# Blue/green: frontend_blue + frontend_green, backend_blue + backend_green behind edge nginx.
+# Image tags are set per slot via TAG_* env vars (never use latest).
+# Run from repo root or project dir with scripts/blue-green-deploy.sh
+
+name: ${COMPOSE_PROJECT_NAME:-ai-stack}
+
+services:
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "${PUBLIC_HTTP_PORT:-80}:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:rw
+    depends_on:
+      frontend_blue:
+        condition: service_started
+      frontend_green:
+        condition: service_started
+      backend_blue:
+        condition: service_started
+      backend_green:
+        condition: service_started
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  frontend_blue:
+    image: ${REGISTRY}/${NAMESPACE}/ai-frontend:${TAG_FRONTEND_BLUE}
+    restart: unless-stopped
+    expose:
+      - "80"
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 90s
+
+  frontend_green:
+    image: ${REGISTRY}/${NAMESPACE}/ai-frontend:${TAG_FRONTEND_GREEN}
+    restart: unless-stopped
+    expose:
+      - "80"
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 90s
+
+  backend_blue:
+    image: ${REGISTRY}/${NAMESPACE}/ai-backend:${TAG_BACKEND_BLUE}
+    restart: unless-stopped
+    expose:
+      - "3000"
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: "3000"
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://127.0.0.1:3000}
+      CORS_ORIGIN: ${CORS_ORIGIN:-*}
+      SERVE_STORAGE: ${SERVE_STORAGE:-true}
+      MAX_CONCURRENT_VIDEO_JOBS: ${MAX_CONCURRENT_VIDEO_JOBS:-2}
+      DOWNLOAD_TIMEOUT_MS: ${DOWNLOAD_TIMEOUT_MS:-600000}
+      FFMPEG_TIMEOUT_MS: ${FFMPEG_TIMEOUT_MS:-3600000}
+      PYTHON_BIN: ${PYTHON_BIN:-/app/python/venv/bin/python}
+    volumes:
+      - backend_storage:/app/storage
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 120s
+
+  backend_green:
+    image: ${REGISTRY}/${NAMESPACE}/ai-backend:${TAG_BACKEND_GREEN}
+    restart: unless-stopped
+    expose:
+      - "3000"
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: "3000"
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://127.0.0.1:3000}
+      CORS_ORIGIN: ${CORS_ORIGIN:-*}
+      SERVE_STORAGE: ${SERVE_STORAGE:-true}
+      MAX_CONCURRENT_VIDEO_JOBS: ${MAX_CONCURRENT_VIDEO_JOBS:-2}
+      DOWNLOAD_TIMEOUT_MS: ${DOWNLOAD_TIMEOUT_MS:-600000}
+      FFMPEG_TIMEOUT_MS: ${FFMPEG_TIMEOUT_MS:-3600000}
+      PYTHON_BIN: ${PYTHON_BIN:-/app/python/venv/bin/python}
+    volumes:
+      - backend_storage:/app/storage
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 120s
+
+volumes:
+  backend_storage:

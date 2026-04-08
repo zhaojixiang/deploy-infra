@@ -1,0 +1,16 @@
+name: Validate compose
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  config:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: docker compose config
+        run: |
+          cd projects/ai
+          docker compose --env-file project.env --env-file ../../environments/prod/ai.env config >/dev/null

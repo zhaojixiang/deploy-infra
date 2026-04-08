@@ -1,0 +1,12 @@
+# Local overrides (tags, secrets)
+projects/ai/.env.local
+**/secrets*.env
+
+# Rollback snapshots may contain paths; keep directory, ignore large backups optionally
+projects/ai/state/rollback/*.bak
+
+# OS / editor
+.DS_Store
+*.swp
+.idea/
+.vscode/
