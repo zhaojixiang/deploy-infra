@@ -17,7 +17,8 @@ deploy-infra/
 │   ├── deploy.sh                # 全量 up（首次/运维）
 │   ├── switch.sh                # 仅切流量
 │   ├── rollback.sh              # 恢复 upstream 快照
-│   └── health-check.sh          # 边缘 /health 与 /api/health
+│   ├── health-check.sh          # 边缘 /health 与 /api/health
+│   └── login-acr.sh             # 读 .env.local 并 docker login ACR
 ├── templates/
 │   ├── docker/                  # 复制到 ai-frontend / ai-backend 仓库的 Dockerfile 模板
 │   └── github/                  # 复制为各应用仓库的 .github/workflows/ci-cd.yml
@@ -31,11 +32,19 @@ deploy-infra/
 3. 按需编辑 `environments/prod/ai.env`（`PUBLIC_BASE_URL`、`CORS_ORIGIN`、`EDGE_*_URL`）。
 4. 登录镜像仓库并启动全栈：
 
-   ```bash
-   chmod +x scripts/*.sh
-   echo "$ACR_PASSWORD" | docker login crpi-3iew34pvm0fklze5.cn-chengdu.personal.cr.aliyuncs.com -u "$ACR_USERNAME" --password-stdin
-   ./scripts/deploy.sh prod
-   ```
+   **不必每次手敲长命令。** 任选其一：
+
+   - **脚本（本机 / ECS 上运维）**：将 `projects/ai/.env.local.example` 复制为 `projects/ai/.env.local`，填入 `ACR_USERNAME`、`ACR_PASSWORD`（已在 `.gitignore`，勿提交）。然后：
+
+     ```bash
+     chmod +x scripts/*.sh
+     ./scripts/login-acr.sh
+     ./scripts/deploy.sh prod
+     ```
+
+   - **CI 推送部署**：`templates/github/*` 里的 workflow 通过 SSH 在服务器上执行 `docker login`，**不要求**你在 ECS 上重复登录，除非镜像凭证过期或你要首次手动物理 `pull`。
+
+   **关于「连上 ECS」**（SSH）：这是登录**服务器**的方式，和 `docker login` 是两件事。CI 会用你配的 `SSH_KEY` 替你连上去执行命令；你自己维护时仍用 `ssh user@ip`，无法用本仓库脚本代替「拿到一台 ECS shell」这一步，除非改用阿里云 Session Manager 等其他入口。
 
 5. 发布新版本（由 CI 调用或手动）：
 
