@@ -14,13 +14,13 @@ services:
       - ./nginx/conf.d:/etc/nginx/conf.d:rw
     depends_on:
       frontend_blue:
-        condition: service_started
+        condition: service_healthy
       frontend_green:
-        condition: service_started
+        condition: service_healthy
       backend_blue:
-        condition: service_started
+        condition: service_healthy
       backend_green:
-        condition: service_started
+        condition: service_healthy
     restart: unless-stopped
     logging:
       driver: json-file

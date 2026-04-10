@@ -56,7 +56,7 @@ deploy-infra/
 ## 蓝绿与回滚
 
 - **蓝绿**：`frontend_blue` / `frontend_green` 与 `backend_blue` / `backend_green` 两两互斥升级；`nginx/conf.d/10-upstreams.conf` 指向当前活跃槽位。
-- **健康检查**：新槽位容器 `healthcheck` 通过后，脚本再 `nginx -s reload`，并对边缘 `EDGE_HEALTH_URL`、`EDGE_API_HEALTH_URL` 做 `curl`；失败则恢复 upstream 快照并退出非零。
+- **健康检查**：新槽位容器 `healthcheck` 通过后，脚本再 `nginx -s reload`，并对边缘（默认 `http://127.0.0.1:${PUBLIC_HTTP_PORT}/health` 与 `/api/health`）做 `curl`；失败则恢复 upstream 快照并退出非零。
 - **回滚**：`./scripts/rollback.sh prod` 恢复最近一次部署前保存的 upstream 与 `state/*.active`；若旧容器已被删除，需用已知 tag 再次执行 `blue-green-deploy` 拉旧镜像。
 
 ## 应用仓库集成
@@ -76,6 +76,11 @@ deploy-infra/
 | `main` | `prod` |
 | `develop` | `dev` |
 | `test` | `test` |
+
+## 故障排查
+
+- **`ai-stack-nginx-1` 一直 `Restarting`，`health-check.sh` 报 Connection refused**：边缘 Nginx 未监听端口。先 `docker logs ai-stack-nginx-1` 看是否有 `[emerg]`。同步本仓库最新 `compose.yml`（`nginx` 已改为在四个应用 **healthy** 后再启动）与 `10-upstreams.conf`（已去掉 upstream `keepalive`，避免与 `proxy_pass` 组合导致启动失败）。然后在 `projects/ai` 下执行 `docker compose ... up -d --force-recreate nginx` 或整栈重拉。
+- **宿主机 80 被占用**：把 `environments/<env>/ai.env` 的 `PUBLIC_HTTP_PORT` 改为 `8080` 等，并保证与 `deploy.sh` 实际映射一致。
 
 ## 注意事项
 

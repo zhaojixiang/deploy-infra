@@ -54,12 +54,10 @@ write_upstreams() {
 # Rewritten by deploy scripts — do not edit by hand during deploy
 upstream frontend_active {
     server frontend_${fe}:80;
-    keepalive 32;
 }
 
 upstream backend_active {
     server backend_${be}:3000;
-    keepalive 32;
 }
 EOF
 }
