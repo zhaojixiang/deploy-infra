@@ -81,6 +81,7 @@ deploy-infra/
 
 - **`ai-stack-nginx-1` 一直 `Restarting`，`health-check.sh` 报 Connection refused**：边缘 Nginx 未监听端口。先 `docker logs ai-stack-nginx-1` 看是否有 `[emerg]`。同步本仓库最新 `compose.yml`（`nginx` 已改为在四个应用 **healthy** 后再启动）与 `10-upstreams.conf`（已去掉 upstream `keepalive`，避免与 `proxy_pass` 组合导致启动失败）。然后在 `projects/ai` 下执行 `docker compose ... up -d --force-recreate nginx` 或整栈重拉。
 - **宿主机 80 被占用**：把 `environments/<env>/ai.env` 的 `PUBLIC_HTTP_PORT` 改为 `8080` 等，并保证与 `deploy.sh` 实际映射一致。
+- **页面能打开（如 `/editor`），但浏览器访问 `http://<IP>/api/...` 不通**：边缘 `projects/ai/nginx/conf.d/20-default.conf` 里 `location /api/` 使用 `proxy_pass http://backend_active/;`（末尾 **`/`** 必填），会把 **`/api` 剥掉** 再转给 Nest；例如浏览器请求 `/api/video/process`，上游收到的是 **`/video/process`**（与 Nest 未设 `setGlobalPrefix('api')` 时一致）。修改该文件后需在服务器上执行 `docker compose exec nginx nginx -t && docker compose exec nginx nginx -s reload`（或在 `projects/ai` 下 `compose` 等价命令）。在 ECS 本机可先验边缘与上游：`curl -fsS "http://127.0.0.1:${PUBLIC_HTTP_PORT:-80}/api/health"`；再按接口方法验业务路径（如 `POST .../api/video/process`）。若前端构建时把 **`VITE_API_BASE_URL` 写成 `http://localhost:3000`（或任意非当前站点）**，浏览器会打到用户本机或错误主机，表现为「线上页面正常、接口全挂」，应改为 **`/api`** 或留空，走与页面同源的边缘地址。
 
 ## 注意事项
 
