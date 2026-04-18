@@ -68,11 +68,59 @@ services:
       retries: 5
       start_period: 90s
 
+  mysql:
+    image: mysql:8.4
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-localroot}
+      MYSQL_DATABASE: ${DB_NAME:-ai}
+      MYSQL_USER: ${DB_USER:-ai}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-aipass}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${MYSQL_ROOT_PASSWORD:-localroot}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+
   backend_blue:
     image: ${REGISTRY}/${NAMESPACE}/ai-backend:${TAG_BACKEND_BLUE}
     restart: unless-stopped
     expose:
       - "3000"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       NODE_ENV: ${NODE_ENV:-production}
       PORT: "3000"
@@ -83,6 +131,15 @@ services:
       DOWNLOAD_TIMEOUT_MS: ${DOWNLOAD_TIMEOUT_MS:-600000}
       FFMPEG_TIMEOUT_MS: ${FFMPEG_TIMEOUT_MS:-3600000}
       PYTHON_BIN: ${PYTHON_BIN:-/app/python/venv/bin/python}
+      DB_HOST: ${DB_HOST:-mysql}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_USER: ${DB_USER:-ai}
+      DB_PASSWORD: ${DB_PASSWORD:-aipass}
+      DB_NAME: ${DB_NAME:-ai}
+      DB_SYNC: ${DB_SYNC:-false}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
     volumes:
       - backend_storage:/app/storage
     logging:
@@ -102,6 +159,11 @@ services:
     restart: unless-stopped
     expose:
       - "3000"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       NODE_ENV: ${NODE_ENV:-production}
       PORT: "3000"
@@ -112,6 +174,15 @@ services:
       DOWNLOAD_TIMEOUT_MS: ${DOWNLOAD_TIMEOUT_MS:-600000}
       FFMPEG_TIMEOUT_MS: ${FFMPEG_TIMEOUT_MS:-3600000}
       PYTHON_BIN: ${PYTHON_BIN:-/app/python/venv/bin/python}
+      DB_HOST: ${DB_HOST:-mysql}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_USER: ${DB_USER:-ai}
+      DB_PASSWORD: ${DB_PASSWORD:-aipass}
+      DB_NAME: ${DB_NAME:-ai}
+      DB_SYNC: ${DB_SYNC:-false}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
     volumes:
       - backend_storage:/app/storage
     logging:
@@ -128,3 +199,5 @@ services:
 
 volumes:
   backend_storage:
+  mysql_data:
+  redis_data:
