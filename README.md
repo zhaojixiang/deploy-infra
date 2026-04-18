@@ -2,6 +2,8 @@
 
 阿里云 ECS 上运行 **ai-frontend**（静态 Nginx）与 **ai-backend**（NestJS）的 **蓝绿部署** 编排仓库：边缘 Nginx、Compose、脚本与 CI/CD 模板（GitHub Actions）。
 
+不熟悉运维/Docker 的前端同学可优先阅读：[docs/部署说明-前端视角.md](docs/部署说明-前端视角.md)（架构、请求路径、各目录场景、发版流程）。
+
 ## 目录结构
 
 ```text

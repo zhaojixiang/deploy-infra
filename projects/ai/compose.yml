@@ -81,6 +81,9 @@ services:
       MYSQL_PASSWORD: ${DB_PASSWORD:-aipass}
     volumes:
       - mysql_data:/var/lib/mysql
+    # 仅监听 ECS 本机回环，供 SSH 隧道 + DBeaver 等工具使用；不应对 0.0.0.0 暴露到公网
+    ports:
+      - "127.0.0.1:${MYSQL_PUBLISH_PORT:-3306}:3306"
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${MYSQL_ROOT_PASSWORD:-localroot}"]
       interval: 10s
